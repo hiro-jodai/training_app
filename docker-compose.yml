@@ -1,0 +1,57 @@
+version: '3'
+
+networks:
+  react_express:
+    driver: bridge
+
+services:
+  nginx:
+    build:
+      context: ./docker/nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - react
+      - express
+    networks:
+      - react_express
+  react:  # React用のコンテナ
+    build:
+      context: .
+      dockerfile: docker/react/Dockerfile
+    tty: true
+    volumes:
+      - ./react:/usr/src/app
+    ports:
+      - "3001:3000"
+    networks:
+      - react_express
+  express:  # Express用のコンテナ
+    build:
+      context: .
+      dockerfile: docker/express/Dockerfile
+    tty: true
+    volumes:
+      - ./express:/usr/src/app
+    working_dir: "/usr/src/app"
+    ports:
+      - "3002:3000"
+    networks:
+      - react_express
+  db:
+    image: mysql:8.0
+    platform: linux/x86_64  # M1 Macの場合必要
+    environment:
+      APP_ENV: "development"
+      TZ: "Asia/Tokyo"
+    env_file:
+      - .env.development
+    volumes:
+      - ./mysql:/var/lib/mysql:cached
+      - ./docker/db:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3306:3306"
+    networks:
+      - react_express
